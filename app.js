@@ -1013,7 +1013,7 @@ async function saveRepository(form) {
 
 async function importWorkerFile(file) {
   try {
-    const source = state.workerSource || file.name;
+    const source = file.name || state.workerSource || "Active Worker Census";
     const workers = await parseWorkerFile(file, source);
     if (!workers.length) {
       notice = { tone: "danger", text: "No worker records were found in that file." };
@@ -1470,6 +1470,9 @@ function renderWorkers() {
           <div class="button-row">
             ${statusPill(`${state.workers.length} records`)}
             <button class="button button-primary" id="getLatestWorkers">${icon("refresh-cw")}Get Latest Update</button>
+            <label class="button button-secondary file-button">${icon("upload")}Upload worker file
+              <input type="file" id="workerFile" accept=".xlsx,.xls" />
+            </label>
           </div>
         </div>
         <label>Search workers
