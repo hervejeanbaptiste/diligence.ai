@@ -22,6 +22,8 @@ No local package install or build step is required.
 
 The repository includes `.github/workflows/deploy.yml`. After pushing to `main` or `master`, enable GitHub Pages in the repository settings with GitHub Actions as the source.
 
+For the repeatable "new repo, no overwrite" publishing pattern, see [docs/github-pages-publish-playbook.md](docs/github-pages-publish-playbook.md).
+
 ## Data Notes
 
 GitHub Pages is static, so this prototype stores the working session in browser storage and treats Excel and JSONL exports as the durable files. For production, the same data model can be moved behind an API that writes directly to SharePoint, OneDrive, or another governed storage location.
