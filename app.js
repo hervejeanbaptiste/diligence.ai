@@ -1159,7 +1159,8 @@ function tabsHtml() {
   ];
   const adminTabs = [
     ["workers", "database", "Workers"],
-    ["workbook", "file-spreadsheet", "Workbook"],
+    ["excelStorage", "file-spreadsheet", "Excel Storage"],
+    ["auditChain", "shield-check", "Audit Chain"],
   ];
 
   const buttons = (tabs) => tabs.map(([id, iconName, label]) =>
@@ -1484,30 +1485,14 @@ function renderWorkers() {
     </section>`;
 }
 
-function renderWorkbook() {
-  const verifyHtml = verifyResult ? `
-    <div class="verify-box">
-      <strong>${verifyResult.checked} entries checked</strong>
-      ${verifyResult.errors.length
-        ? `<ul>${verifyResult.errors.slice(0, 5).map((error) => `<li>${escapeHtml(error)}</li>`).join("")}</ul>`
-        : "<span>No verification issues.</span>"}
-    </div>` : "";
-
-  const rows = state.audit.length ? state.audit.slice().reverse().map((entry) => `
-    <tr>
-      <td>${entry.index}</td>
-      <td>${escapeHtml(formatDateTime(entry.timestamp))}</td>
-      <td>${escapeHtml(entry.actor)}</td>
-      <td>${escapeHtml(entry.action)}</td>
-      <td>${escapeHtml(entry.summary)}</td>
-      <td><code>${escapeHtml(String(entry.hash || "").slice(0, 14))}</code></td>
-    </tr>
-  `).join("") : `<tr><td colspan="6" class="empty-cell">No audit entries.</td></tr>`;
-
+function renderExcelStorage() {
   return `
-    <section class="grid-two">
-      <section class="panel form-panel">
-        <div class="panel-heading"><h2>Excel Storage</h2>${statusPill(state.workbookName || "Workbook")}</div>
+    <section class="worksheet-stack">
+      <section class="panel form-panel admin-control-panel">
+        <div class="panel-heading">
+          <h2>Excel Storage</h2>
+          ${statusPill(state.workbookName || "Workbook")}
+        </div>
         <label>Workbook name<input id="workbookName" value="${escapeHtml(state.workbookName)}" /></label>
         <div class="button-row">
           <button class="button button-primary" id="exportWorkbook">${icon("download")}Export workbook</button>
@@ -1516,7 +1501,37 @@ function renderWorkbook() {
           </label>
         </div>
       </section>
-      <section class="panel form-panel">
+    </section>`;
+}
+
+function auditLogRows() {
+  return state.audit.length ? state.audit.slice().reverse().map((entry) => `
+    <tr>
+      <td>${entry.index}</td>
+      <td>${escapeHtml(formatDateTime(entry.timestamp))}</td>
+      <td>${escapeHtml(entry.actor)}</td>
+      <td>${escapeHtml(entry.action)}</td>
+      <td>${escapeHtml(entry.entityType)}</td>
+      <td>${escapeHtml(entry.entityId)}</td>
+      <td class="audit-summary-cell">${escapeHtml(entry.summary)}</td>
+      <td><code class="hash-cell">${escapeHtml(String(entry.previousHash || "").slice(0, 18))}</code></td>
+      <td><code class="hash-cell">${escapeHtml(String(entry.hash || "").slice(0, 18))}</code></td>
+    </tr>
+  `).join("") : `<tr><td colspan="9" class="empty-cell">No audit entries.</td></tr>`;
+}
+
+function renderAuditChain() {
+  const verifyHtml = verifyResult ? `
+    <div class="verify-box">
+      <strong>${verifyResult.checked} entries checked</strong>
+      ${verifyResult.errors.length
+        ? `<ul>${verifyResult.errors.slice(0, 5).map((error) => `<li>${escapeHtml(error)}</li>`).join("")}</ul>`
+        : "<span>No verification issues.</span>"}
+    </div>` : "";
+
+  return `
+    <section class="worksheet-stack">
+      <section class="panel form-panel admin-control-panel">
         <div class="panel-heading"><h2>Audit Chain</h2>${statusPill(verifyResult ? (verifyResult.valid ? "Verified" : "Issues") : "Not checked")}</div>
         <div class="button-row">
           <button class="button button-primary" id="verifyAudit">${icon("shield-check")}Verify chain</button>
@@ -1531,9 +1546,9 @@ function renderWorkbook() {
       <section class="panel table-panel wide">
         <div class="panel-heading"><h2>Audit Log</h2>${statusPill(`${state.audit.length} entries`)}</div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>#</th><th>Timestamp</th><th>Actor</th><th>Action</th><th>Summary</th><th>Hash</th></tr></thead>
-            <tbody>${rows}</tbody>
+          <table class="audit-log-table">
+            <thead><tr><th>#</th><th>Timestamp</th><th>Actor</th><th>Action</th><th>Entity</th><th>Entity ID</th><th>Summary</th><th>Previous Hash</th><th>Hash</th></tr></thead>
+            <tbody>${auditLogRows()}</tbody>
           </table>
         </div>
       </section>
@@ -1545,7 +1560,8 @@ function renderContent() {
   if (activeTab === "capacities") return renderCapacities();
   if (activeTab === "repositories") return renderRepositories();
   if (activeTab === "workers") return renderWorkers();
-  return renderWorkbook();
+  if (activeTab === "excelStorage") return renderExcelStorage();
+  return renderAuditChain();
 }
 
 function render() {

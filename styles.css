@@ -388,6 +388,14 @@ td small,
   min-width: 0;
 }
 
+.admin-control-panel {
+  max-width: 780px;
+}
+
+.admin-control-panel .button-row {
+  flex-wrap: wrap;
+}
+
 .wide {
   grid-column: 1 / -1;
 }
@@ -400,6 +408,26 @@ table {
   width: 100%;
   min-width: 720px;
   border-collapse: collapse;
+}
+
+.audit-log-table {
+  min-width: 1320px;
+}
+
+.audit-log-table th,
+.audit-log-table td {
+  vertical-align: top;
+}
+
+.audit-summary-cell {
+  min-width: 360px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.hash-cell {
+  white-space: nowrap;
 }
 
 .roster-panel {
@@ -813,7 +841,7 @@ code {
   }
 
   .side-nav-section:last-child {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
   }
 
   .side-nav-label {
