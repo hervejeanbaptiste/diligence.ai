@@ -268,7 +268,7 @@ function findWorkerForPerson(person) {
 
 function workerDetail(person, field) {
   const worker = findWorkerForPerson(person);
-  return worker?.[field] || person?.[field] || "";
+  return person?.[field] || worker?.[field] || "";
 }
 
 function matchStatus(person) {
@@ -733,24 +733,24 @@ async function parseAuditJsonl(file) {
 async function savePerson(form) {
   const now = new Date().toISOString();
   const existing = state.people.find((person) => person.id === editPersonId);
-  const worker = workerFromSearchValue(formValue(form, "workerSearch"));
+  const fullName = formValue(form, "fullName");
 
-  if (!worker) {
-    notice = { tone: "danger", text: "Select a worker from the active worker search." };
+  if (!fullName) {
+    notice = { tone: "danger", text: "Enter a person name." };
     render();
     return;
   }
 
   const nextPerson = {
     id: existing?.id || createId("person"),
-    workerKey: worker.id,
-    fullName: worker.fullName,
-    email: worker.email,
-    title: worker.title,
-    practice: worker.practice,
-    discipline: worker.discipline || "",
-    location: worker.location || "",
-    level: worker.level || "",
+    workerKey: existing?.workerKey || workerKey(fullName, existing?.email, ""),
+    fullName,
+    email: existing?.email || "",
+    title: formValue(form, "title"),
+    practice: formValue(form, "practice"),
+    discipline: formValue(form, "discipline"),
+    location: formValue(form, "location"),
+    level: formValue(form, "level"),
     status: existing?.status || "Active",
     notes: formValue(form, "notes"),
     createdAt: existing?.createdAt || now,
@@ -1224,8 +1224,6 @@ function renderPeopleForm() {
   if (!editPersonId) return "";
   const isNew = editPersonId === "new";
   const person = isNew ? {} : state.people.find((candidate) => candidate.id === editPersonId) || {};
-  const worker = findWorkerForPerson(person);
-  const workerSearchValue = worker ? workerLabel(worker) : "";
 
   return `
     <form class="panel form-panel editor-panel" id="personForm">
@@ -1233,12 +1231,15 @@ function renderPeopleForm() {
         <h2>${isNew ? "Add Person" : "Change Person"}</h2>
         <button type="button" class="icon-button" id="cancelPersonForm" title="Cancel">${icon("x-circle")}</button>
       </div>
-      <label>Search active worker
-        <input class="worker-search-input" name="workerSearch" list="activeWorkerOptions" value="${escapeHtml(workerSearchValue)}" placeholder="Search by name or email" autocomplete="off" />
-        <datalist id="activeWorkerOptions">
-          ${state.workers.map((candidate) => `<option value="${escapeHtml(workerLabel(candidate))}"></option>`).join("")}
-        </datalist>
-      </label>
+      <div class="form-note">${icon("info")}<span>Search disabled, enter details.</span></div>
+      <div class="form-grid">
+        <label>Name<input name="fullName" value="${escapeHtml(person.fullName || "")}" /></label>
+        <label>Title<input name="title" value="${escapeHtml(person.title || "")}" /></label>
+        <label>Practice<input name="practice" value="${escapeHtml(person.practice || "")}" /></label>
+        <label>Discipline<input name="discipline" value="${escapeHtml(person.discipline || "")}" /></label>
+        <label>Location<input name="location" value="${escapeHtml(person.location || "")}" /></label>
+        <label>Level<input name="level" value="${escapeHtml(person.level || "")}" /></label>
+      </div>
       <label>Pick skill
         <div class="skill-cell form-skill-cell">${activeSkillChecks(isNew ? "" : person.id)}</div>
       </label>

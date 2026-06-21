@@ -384,6 +384,19 @@ td small,
   gap: 12px;
 }
 
+.form-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f7faf6;
+  color: var(--muted);
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
 .table-panel {
   min-width: 0;
 }
