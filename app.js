@@ -1145,19 +1145,31 @@ function shouldLoadMaskedPeopleSeed(source, sourceUpdatedAt) {
   return /active worker|workday|census|seed/i.test(state.workerSource || "");
 }
 
-async function loadMaskedPeopleSeed() {
+async function loadMaskedPeopleSeed({ force = false } = {}) {
   try {
     const response = await fetch(MASKED_PEOPLE_URL, { cache: "no-store" });
-    if (!response.ok) return;
+    if (!response.ok) {
+      if (force) {
+        notice = { tone: "danger", text: "Demo active worker file is not available." };
+        render();
+      }
+      return;
+    }
 
     const payload = await response.json();
     const source = payload.source || "Masked People Directory";
     const sourceUpdatedAt = payload.sourceUpdatedAt || payload.generatedAt || "";
-    if (!shouldLoadMaskedPeopleSeed(source, sourceUpdatedAt)) return;
+    if (!force && !shouldLoadMaskedPeopleSeed(source, sourceUpdatedAt)) return;
 
     const importedAt = new Date().toISOString();
     const workers = normalizeWorkerDirectoryRows(workerDirectoryRows(payload), source, importedAt);
-    if (!workers.length) return;
+    if (!workers.length) {
+      if (force) {
+        notice = { tone: "warning", text: "No demo active worker records were found." };
+        render();
+      }
+      return;
+    }
 
     const next = {
       ...state,
@@ -1171,7 +1183,7 @@ async function loadMaskedPeopleSeed() {
       action: "import",
       entityType: "workerDirectory",
       entityId: source,
-      summary: `Imported ${workers.length} masked people records.`,
+      summary: `${force ? "Loaded demo active worker file" : "Imported masked people file"} with ${workers.length} records.`,
       before: { workers: state.workers.length, source: state.workerSource },
       after: { workers: workers.length, source, sourceUpdatedAt },
     });
@@ -1181,10 +1193,14 @@ async function loadMaskedPeopleSeed() {
       audit: [...state.audit, entry],
       lastSavedAt: importedAt,
     };
-    notice = { tone: "success", text: `Imported ${workers.length} masked people records.` };
+    notice = { tone: "success", text: `${force ? "Loaded demo active worker file" : "Imported masked people file"} with ${workers.length} records.` };
     saveState();
     render();
   } catch {
+    if (force) {
+      notice = { tone: "danger", text: "Demo active worker file failed to load." };
+      render();
+    }
     // The masked seed is a convenience for GitHub Pages; upload remains the fallback.
   }
 }
@@ -1537,6 +1553,7 @@ function renderWorkers() {
           <div class="button-row">
             ${statusPill(`${state.workers.length} records`)}
             <button class="button button-secondary" id="getLatestWorkers" disabled title="Refresh people data feature is disabled for now">${icon("refresh-cw")}Refresh disabled</button>
+            <button class="button button-primary" id="loadDemoWorkers">${icon("database")}Load demo active workers</button>
             <label class="button button-secondary file-button">${icon("upload")}Upload active worker file
               <input type="file" id="workerFile" accept=".xlsx,.xls,.csv,.json" />
             </label>
@@ -1716,6 +1733,11 @@ document.addEventListener("click", (event) => {
   if (target.id === "getLatestWorkers") {
     notice = { tone: "warning", text: "Refresh people data feature is disabled for now. Upload a worker file to update the people directory." };
     render();
+    return;
+  }
+
+  if (target.id === "loadDemoWorkers") {
+    void loadMaskedPeopleSeed({ force: true });
     return;
   }
 
