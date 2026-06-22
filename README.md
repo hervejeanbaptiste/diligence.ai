@@ -28,4 +28,6 @@ For the repeatable "new repo, no overwrite" publishing pattern, see [docs/github
 
 GitHub Pages is static, so this prototype stores the working session in browser storage and treats Excel and JSONL exports as the durable files. For production, the same data model can be moved behind an API that writes directly to SharePoint, OneDrive, or another governed storage location.
 
+The published People search uses `data/masked-people.json`, which must contain only masked or synthetic people records. The live refresh feature is disabled in the prototype; use the Workers tab upload control to load a replacement people file in the browser session.
+
 Do not commit the real active worker workbook into a public repository. Import it through the portal at runtime.

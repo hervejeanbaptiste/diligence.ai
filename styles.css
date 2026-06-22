@@ -45,6 +45,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .app-shell {
   width: min(1440px, calc(100vw - 32px));
   margin: 0 auto;
@@ -395,6 +400,29 @@ td small,
   padding: 10px 12px;
   font-size: 0.82rem;
   font-weight: 750;
+}
+
+.person-entry-toggle {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.person-entry-toggle input {
+  width: 16px;
+  min-height: 16px;
+}
+
+.manual-person-fields {
+  display: none;
+}
+
+.person-entry-form:has(#manualPersonEntry:checked) .person-search-block {
+  display: none;
+}
+
+.person-entry-form:has(#manualPersonEntry:checked) .manual-person-fields {
+  display: grid;
 }
 
 .table-panel {

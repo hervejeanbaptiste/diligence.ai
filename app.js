@@ -1,5 +1,6 @@
 const STORAGE_KEY = "diligence-ai-launch-portal-state";
 const seedDate = "2026-06-20T00:00:00.000Z";
+const MASKED_PEOPLE_URL = "./data/masked-people.json";
 
 let activeTab = "people";
 let notice = null;
@@ -47,6 +48,7 @@ function createInitialState() {
     actor: "Pilot Admin",
     workbookName: "diligence-ai-launch-portal.xlsx",
     workerSource: "",
+    workerSourceMode: "",
     workerImportedAt: "",
     workerSourceUpdatedAt: "",
     lastSavedAt: "",
@@ -439,10 +441,57 @@ function rowToWorker(row, source, importedAt) {
   };
 }
 
+function workerDirectoryRows(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.workers)) return payload.workers;
+  if (Array.isArray(payload?.people)) return payload.people;
+  return [];
+}
+
+function workerFromDirectoryRecord(row, source, importedAt) {
+  const worker = rowToWorker(row, source, importedAt);
+  if (worker) return worker;
+
+  const fullName = readCell(row, ["Full Name", "Name", "Person Name"]);
+  const email = readCell(row, ["Email", "Email Address"]);
+  const workerId = readCell(row, ["Worker ID", "Person ID", "ID"]);
+  if (!fullName && !email && !workerId) return null;
+
+  return {
+    id: readCell(row, ["Worker Key"]) || workerKey(fullName, email, workerId),
+    workerId,
+    fullName,
+    email,
+    title: readCell(row, ["Title"]),
+    practice: readCell(row, ["Practice"]),
+    discipline: readCell(row, ["Discipline"]),
+    location: readCell(row, ["Location"]),
+    level: readCell(row, ["Level"]),
+    status: readCell(row, ["Status"]) || "Active",
+    source,
+    importedAt,
+  };
+}
+
+function normalizeWorkerDirectoryRows(rows, source, importedAt) {
+  const workers = new Map();
+  for (const row of rows) {
+    const worker = workerFromDirectoryRecord(row, source, importedAt);
+    if (worker) workers.set(worker.id, worker);
+  }
+  return Array.from(workers.values()).sort((a, b) => String(a.fullName).localeCompare(String(b.fullName)));
+}
+
 async function parseWorkerFile(file, sourceOverride = "") {
-  const workbook = await readWorkbook(file);
   const importedAt = new Date().toISOString();
   const source = sourceOverride || file.name;
+
+  if (file.name.toLowerCase().endsWith(".json")) {
+    const payload = JSON.parse(await file.text());
+    return normalizeWorkerDirectoryRows(workerDirectoryRows(payload), source, importedAt);
+  }
+
+  const workbook = await readWorkbook(file);
   const workers = new Map();
 
   for (const sheetName of workbook.SheetNames) {
@@ -567,6 +616,7 @@ async function parsePortalWorkbook(file) {
     actor: state.actor,
     workbookName: metadataValue(metadata, "Workbook Name") || file.name,
     workerSource: metadataValue(metadata, "Worker Source"),
+    workerSourceMode: metadataValue(metadata, "Worker Source Mode"),
     workerImportedAt: metadataValue(metadata, "Worker Imported At"),
     workerSourceUpdatedAt: metadataValue(metadata, "Worker Source Updated At"),
     lastSavedAt: metadataValue(metadata, "Exported At") || now,
@@ -610,6 +660,7 @@ function exportPortalWorkbook() {
     { Key: "Exported At", Value: exportedAt },
     { Key: "Workbook Name", Value: state.workbookName },
     { Key: "Worker Source", Value: state.workerSource },
+    { Key: "Worker Source Mode", Value: state.workerSourceMode },
     { Key: "Worker Imported At", Value: state.workerImportedAt },
     { Key: "Worker Source Updated At", Value: state.workerSourceUpdatedAt },
   ], ["Key", "Value"], [24, 60]), "Metadata");
@@ -733,9 +784,17 @@ async function parseAuditJsonl(file) {
 async function savePerson(form) {
   const now = new Date().toISOString();
   const existing = state.people.find((person) => person.id === editPersonId);
-  const fullName = formValue(form, "fullName");
+  const manualEntry = Boolean(new FormData(form).get("manualEntry"));
+  const worker = manualEntry ? null : workerFromSearchValue(formValue(form, "workerSearch"));
+  const fullName = manualEntry ? formValue(form, "fullName") : worker?.fullName || "";
 
-  if (!fullName) {
+  if (!manualEntry && !worker) {
+    notice = { tone: "danger", text: "Select a person from search, or choose manual entry." };
+    render();
+    return;
+  }
+
+  if (manualEntry && !fullName) {
     notice = { tone: "danger", text: "Enter a person name." };
     render();
     return;
@@ -743,14 +802,14 @@ async function savePerson(form) {
 
   const nextPerson = {
     id: existing?.id || createId("person"),
-    workerKey: existing?.workerKey || workerKey(fullName, existing?.email, ""),
+    workerKey: manualEntry ? (existing?.workerKey || workerKey(fullName, existing?.email, "")) : worker.id,
     fullName,
-    email: existing?.email || "",
-    title: formValue(form, "title"),
-    practice: formValue(form, "practice"),
-    discipline: formValue(form, "discipline"),
-    location: formValue(form, "location"),
-    level: formValue(form, "level"),
+    email: manualEntry ? (existing?.email || "") : worker.email,
+    title: manualEntry ? formValue(form, "title") : worker.title,
+    practice: manualEntry ? formValue(form, "practice") : worker.practice,
+    discipline: manualEntry ? formValue(form, "discipline") : worker.discipline || "",
+    location: manualEntry ? formValue(form, "location") : worker.location || "",
+    level: manualEntry ? formValue(form, "level") : worker.level || "",
     status: existing?.status || "Active",
     notes: formValue(form, "notes"),
     createdAt: existing?.createdAt || now,
@@ -1022,7 +1081,7 @@ async function importWorkerFile(file) {
     }
 
     const importedAt = new Date().toISOString();
-    await commitState({ ...state, workers, workerSource: source, workerImportedAt: importedAt, workerSourceUpdatedAt: importedAt }, {
+    await commitState({ ...state, workers, workerSource: source, workerSourceMode: "uploaded", workerImportedAt: importedAt, workerSourceUpdatedAt: importedAt }, {
       action: "import",
       entityType: "workerDirectory",
       entityId: source,
@@ -1078,37 +1137,33 @@ async function importAuditFile(file) {
   }
 }
 
-async function loadLocalWorkerSeed({ force = false } = {}) {
-  const hasLookupFields = state.workers.some((worker) => worker.discipline || worker.location || worker.level);
-  if (!force && state.workers.length > 0 && hasLookupFields && state.workerSourceUpdatedAt) return;
+function shouldLoadMaskedPeopleSeed(source, sourceUpdatedAt) {
+  if (!state.workers.length) return true;
+  if (state.workerSourceMode === "uploaded") return false;
+  if (state.workerSource === source && state.workerSourceUpdatedAt === sourceUpdatedAt) return false;
+  if (state.workerSourceMode === "masked") return false;
+  return /active worker|workday|census|seed/i.test(state.workerSource || "");
+}
 
+async function loadMaskedPeopleSeed() {
   try {
-    const response = await fetch("./private-data/active-workers.json", { cache: "no-store" });
-    if (!response.ok) {
-      if (force) {
-        notice = { tone: "warning", text: "Latest worker update is not available in this build." };
-        render();
-      }
-      return;
-    }
+    const response = await fetch(MASKED_PEOPLE_URL, { cache: "no-store" });
+    if (!response.ok) return;
 
     const payload = await response.json();
-    const workers = Array.isArray(payload.workers) ? payload.workers : [];
-    if (!workers.length) {
-      if (force) {
-        notice = { tone: "warning", text: "No worker records were found in the latest update." };
-        render();
-      }
-      return;
-    }
-
-    const source = payload.source || "Active Worker Census seed";
+    const source = payload.source || "Masked People Directory";
     const sourceUpdatedAt = payload.sourceUpdatedAt || payload.generatedAt || "";
+    if (!shouldLoadMaskedPeopleSeed(source, sourceUpdatedAt)) return;
+
     const importedAt = new Date().toISOString();
+    const workers = normalizeWorkerDirectoryRows(workerDirectoryRows(payload), source, importedAt);
+    if (!workers.length) return;
+
     const next = {
       ...state,
       workers,
       workerSource: source,
+      workerSourceMode: "masked",
       workerImportedAt: importedAt,
       workerSourceUpdatedAt: sourceUpdatedAt,
     };
@@ -1116,7 +1171,7 @@ async function loadLocalWorkerSeed({ force = false } = {}) {
       action: "import",
       entityType: "workerDirectory",
       entityId: source,
-      summary: `Imported ${workers.length} worker records from Active Worker Census.`,
+      summary: `Imported ${workers.length} masked people records.`,
       before: { workers: state.workers.length, source: state.workerSource },
       after: { workers: workers.length, source, sourceUpdatedAt },
     });
@@ -1126,15 +1181,11 @@ async function loadLocalWorkerSeed({ force = false } = {}) {
       audit: [...state.audit, entry],
       lastSavedAt: importedAt,
     };
-    notice = { tone: "success", text: `Imported ${workers.length} worker records from Active Worker Census.` };
+    notice = { tone: "success", text: `Imported ${workers.length} masked people records.` };
     saveState();
     render();
   } catch {
-    if (force) {
-      notice = { tone: "danger", text: "Latest worker update failed." };
-      render();
-    }
-    // The seed file is local-only and intentionally absent in deployed GitHub Pages builds.
+    // The masked seed is a convenience for GitHub Pages; upload remains the fallback.
   }
 }
 
@@ -1224,15 +1275,30 @@ function renderPeopleForm() {
   if (!editPersonId) return "";
   const isNew = editPersonId === "new";
   const person = isNew ? {} : state.people.find((candidate) => candidate.id === editPersonId) || {};
+  const worker = findWorkerForPerson(person);
+  const manualDefault = isNew ? !state.workers.length : !worker;
+  const workerSearchValue = worker ? workerLabel(worker) : "";
 
   return `
-    <form class="panel form-panel editor-panel" id="personForm">
+    <form class="panel form-panel editor-panel person-entry-form" id="personForm">
       <div class="panel-heading">
         <h2>${isNew ? "Add Person" : "Change Person"}</h2>
         <button type="button" class="icon-button" id="cancelPersonForm" title="Cancel">${icon("x-circle")}</button>
       </div>
-      <div class="form-note">${icon("info")}<span>Search disabled, enter details.</span></div>
-      <div class="form-grid">
+      <div class="form-note">${icon("info")}<span>People search uses masked people data. Select manual entry when the person is not listed.</span></div>
+      <label class="check-row person-entry-toggle">
+        <input type="checkbox" id="manualPersonEntry" name="manualEntry" ${manualDefault ? "checked" : ""} />
+        <span>Enter person manually</span>
+      </label>
+      <div class="person-search-block">
+        <label>Search people
+          <input class="worker-search-input" name="workerSearch" list="activeWorkerOptions" value="${escapeHtml(workerSearchValue)}" placeholder="Search by name, email, or title" autocomplete="off" />
+          <datalist id="activeWorkerOptions">
+            ${state.workers.map((candidate) => `<option value="${escapeHtml(workerLabel(candidate))}"></option>`).join("")}
+          </datalist>
+        </label>
+      </div>
+      <div class="form-grid manual-person-fields">
         <label>Name<input name="fullName" value="${escapeHtml(person.fullName || "")}" /></label>
         <label>Title<input name="title" value="${escapeHtml(person.title || "")}" /></label>
         <label>Practice<input name="practice" value="${escapeHtml(person.practice || "")}" /></label>
@@ -1466,13 +1532,13 @@ function renderWorkers() {
         <div class="panel-heading">
           <div>
             <h2>Workers</h2>
-            <span class="panel-subtitle">As of ${escapeHtml(asOf || "not loaded")}</span>
+            <span class="panel-subtitle">As of ${escapeHtml(asOf || "not loaded")}. Refresh people data feature is disabled for now.</span>
           </div>
           <div class="button-row">
             ${statusPill(`${state.workers.length} records`)}
-            <button class="button button-primary" id="getLatestWorkers">${icon("refresh-cw")}Get Latest Update</button>
+            <button class="button button-secondary" id="getLatestWorkers" disabled title="Refresh people data feature is disabled for now">${icon("refresh-cw")}Refresh disabled</button>
             <label class="button button-secondary file-button">${icon("upload")}Upload worker file
-              <input type="file" id="workerFile" accept=".xlsx,.xls" />
+              <input type="file" id="workerFile" accept=".xlsx,.xls,.csv,.json" />
             </label>
           </div>
         </div>
@@ -1648,7 +1714,8 @@ document.addEventListener("click", (event) => {
   }
 
   if (target.id === "getLatestWorkers") {
-    void loadLocalWorkerSeed({ force: true });
+    notice = { tone: "warning", text: "Refresh people data feature is disabled for now. Upload a worker file to update the people directory." };
+    render();
     return;
   }
 
@@ -1908,4 +1975,4 @@ document.addEventListener("keyup", (event) => {
 });
 
 render();
-void loadLocalWorkerSeed();
+void loadMaskedPeopleSeed();

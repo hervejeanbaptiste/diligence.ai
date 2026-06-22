@@ -1,0 +1,72 @@
+{
+  "source": "Masked People Directory",
+  "sourceUpdatedAt": "2026-06-22T00:00:00.000Z",
+  "people": [
+    {
+      "workerId": "MASK-001",
+      "fullName": "Masked Person 001",
+      "email": "masked.person001@example.invalid",
+      "title": "Managing Director",
+      "practice": "Customer Solutions",
+      "discipline": "AI Strategy",
+      "location": "Chicago",
+      "level": "MD",
+      "status": "Active"
+    },
+    {
+      "workerId": "MASK-002",
+      "fullName": "Masked Person 002",
+      "email": "masked.person002@example.invalid",
+      "title": "Senior Manager",
+      "practice": "Operations Excellence",
+      "discipline": "Process Transformation",
+      "location": "Dallas",
+      "level": "Senior Manager",
+      "status": "Active"
+    },
+    {
+      "workerId": "MASK-003",
+      "fullName": "Masked Person 003",
+      "email": "masked.person003@example.invalid",
+      "title": "Principal",
+      "practice": "Technology",
+      "discipline": "Data Engineering",
+      "location": "New York",
+      "level": "Principal",
+      "status": "Active"
+    },
+    {
+      "workerId": "MASK-004",
+      "fullName": "Masked Person 004",
+      "email": "masked.person004@example.invalid",
+      "title": "Senior Consultant",
+      "practice": "Product Experience",
+      "discipline": "Product Management",
+      "location": "Minneapolis",
+      "level": "Senior Consultant",
+      "status": "Active"
+    },
+    {
+      "workerId": "MASK-005",
+      "fullName": "Masked Person 005",
+      "email": "masked.person005@example.invalid",
+      "title": "Consultant",
+      "practice": "Technology",
+      "discipline": "Application Engineering",
+      "location": "Seattle",
+      "level": "Consultant",
+      "status": "Active"
+    },
+    {
+      "workerId": "MASK-006",
+      "fullName": "Masked Person 006",
+      "email": "masked.person006@example.invalid",
+      "title": "Architect",
+      "practice": "Technology",
+      "discipline": "Cloud Platforms",
+      "location": "Remote",
+      "level": "Architect",
+      "status": "Active"
+    }
+  ]
+}
