@@ -1196,7 +1196,7 @@ function metricsHtml() {
       <div class="metric">${icon("users")}<span>${metrics.people}</span><small>People</small></div>
       <div class="metric">${icon("user-cog")}<span>${metrics.assignments}</span><small>Skills</small></div>
       <div class="metric">${icon("link-2")}<span>${metrics.repositories}</span><small>Data</small></div>
-      <div class="metric">${icon("database")}<span>${metrics.workers}</span><small>Workers</small></div>
+      <div class="metric">${icon("database")}<span>${metrics.workers}</span><small>Active Workers</small></div>
       <div class="metric">${icon("shield-check")}<span>${metrics.auditEntries}</span><small>Audit</small></div>
       <div class="save-state"><span>Last saved</span><strong>${escapeHtml(formatDateTime(state.lastSavedAt))}</strong></div>
     </section>`;
@@ -1209,7 +1209,7 @@ function tabsHtml() {
     ["repositories", "database", "Data"],
   ];
   const adminTabs = [
-    ["workers", "database", "Workers"],
+    ["workers", "database", "Active Workers"],
     ["excelStorage", "file-spreadsheet", "Excel Storage"],
     ["auditChain", "shield-check", "Audit Chain"],
   ];
@@ -1523,7 +1523,7 @@ function renderWorkers() {
       <td>${escapeHtml(worker.level)}</td>
       <td>${statusPill(worker.status || "Active")}</td>
     </tr>
-  `).join("") : `<tr><td colspan="7" class="empty-cell">No worker records.</td></tr>`;
+  `).join("") : `<tr><td colspan="7" class="empty-cell">No active worker records.</td></tr>`;
   const asOf = state.workerSourceUpdatedAt || state.workerImportedAt || "";
 
   return `
@@ -1531,18 +1531,18 @@ function renderWorkers() {
       <section class="panel table-panel roster-panel">
         <div class="panel-heading">
           <div>
-            <h2>Workers</h2>
+            <h2>Active Workers</h2>
             <span class="panel-subtitle">As of ${escapeHtml(asOf || "not loaded")}. Refresh people data feature is disabled for now.</span>
           </div>
           <div class="button-row">
             ${statusPill(`${state.workers.length} records`)}
             <button class="button button-secondary" id="getLatestWorkers" disabled title="Refresh people data feature is disabled for now">${icon("refresh-cw")}Refresh disabled</button>
-            <label class="button button-secondary file-button">${icon("upload")}Upload worker file
+            <label class="button button-secondary file-button">${icon("upload")}Upload active worker file
               <input type="file" id="workerFile" accept=".xlsx,.xls,.csv,.json" />
             </label>
           </div>
         </div>
-        <label>Search workers
+        <label>Search active workers
           <div class="input-with-icon">${icon("search")}<input id="workerSearch" value="${escapeHtml(workerSearch)}" /></div>
         </label>
         <div class="table-wrap">
